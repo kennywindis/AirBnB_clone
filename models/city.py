@@ -1,9 +1,19 @@
 #!/usr/bin/python3
-"""Contains the City model"""
-from models.base_model import BaseModel
+"""This is the city class"""
+from models.base_model import BaseModel, Base
+from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from os import getenv
 
 
-class City(BaseModel):
-    """Implements the City class"""
-    state_id = ""
-    name = ""
+class City(BaseModel, Base):
+    """This is the class for City
+    Attributes:
+        state_id: The state id
+        name: input name
+    """
+    __tablename__ = "cities"
+    name = Column("name", String(128), nullable=False)
+    state_id = Column(String(60), ForeignKey("states.id"), nullable=False)
+    places = relationship('Place', backref='cities')

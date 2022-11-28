@@ -1,171 +1,97 @@
 #!/usr/bin/python3
-"""Test Suite for FileStorage in models/file_storage.py"""
-import os.path
+"""test for file storage"""
 import unittest
-
-import models
-from models import base_model
-from models.engine.file_storage import FileStorage
+import pep8
+import json
+import os
 from models.base_model import BaseModel
 from models.user import User
 from models.state import State
-from models.amenity import Amenity
 from models.city import City
-from models.review import Review
+from models.amenity import Amenity
 from models.place import Place
+from models.review import Review
+from models.engine.file_storage import FileStorage
 
 
-class TestFileStorageInit(unittest.TestCase):
-    """Contains test cases against the FileStorage initialization"""
-
-    def test_file_path_is_a_private_class_attr(self):
-        """Checks that file_path is a private class attribute"""
-        self.assertFalse(hasattr(FileStorage(), "__file_path"))
-
-    def test_objects_is_a_private_class_attr(self):
-        """Checks that objects is a private class attribute"""
-        self.assertFalse(hasattr(FileStorage(), "__objects"))
-
-    def test_init_without_arg(self):
-        """Tests initialization without args"""
-        self.assertEqual(type(FileStorage()), FileStorage)
-
-    def test_init_with_arg(self):
-        """Tests initialization with args"""
-        with self.assertRaises(TypeError):
-            FileStorage(None)
-
-    def test_storage_initialization(self):
-        """Tests storage created in __init__.py"""
-        self.assertEqual(type(models.storage), FileStorage)
-
-
-class TestStorageMethods(unittest.TestCase):
-    """Contains test cases against the methods present in FileStorage"""
+@unittest.skipIf(os.getenv("HBNB_TYPE_STORAGE") == 'db',
+                 "Incorrect storage type")
+class TestFileStorage(unittest.TestCase):
+    '''this will test the FileStorage'''
 
     @classmethod
-    def setUp(self):
-        """Code to execute before testing occurs"""
-        try:
-            os.rename("file.json", "tmp.json")
-        except IOError:
-            pass
+    def setUpClass(cls):
+        """set up for test"""
+        cls.user = User()
+        cls.user.first_name = "Kev"
+        cls.user.last_name = "Yo"
+        cls.user.email = "1234@yahoo.com"
+        cls.storage = FileStorage()
 
     @classmethod
+    def teardown(cls):
+        """at the end of the test this will tear it down"""
+        del cls.user
+
     def tearDown(self):
-        """Code to execute after tests are executed"""
-        # Remove file.json if it exists
+        """teardown"""
         try:
             os.remove("file.json")
-        except IOError:
+        except Exception:
             pass
 
-        # rename tmp.json from setUp() to file.json
+    def test_pep8_FileStorage(self):
+        """Tests pep8 style"""
+        style = pep8.StyleGuide(quiet=True)
+        p = style.check_files(['models/engine/file_storage.py'])
+        self.assertEqual(p.total_errors, 0, "fix pep8")
+
+    def test_all(self):
+        """tests if all works in File Storage"""
+        storage = FileStorage()
+        obj = storage.all()
+        self.assertIsNotNone(obj)
+        self.assertEqual(type(obj), dict)
+        self.assertIs(obj, storage._FileStorage__objects)
+
+    def test_new(self):
+        """test when new is created"""
+        storage = FileStorage()
+        obj = storage.all()
+        user = User()
+        user.id = 123455
+        user.name = "Kevin"
+        storage.new(user)
+        key = user.__class__.__name__ + "." + str(user.id)
+        self.assertIsNotNone(obj[key])
+
+    def test_reload_filestorage(self):
+        """
+        tests reload
+        """
+        self.storage.save()
+        Root = os.path.dirname(os.path.abspath("console.py"))
+        path = os.path.join(Root, "file.json")
+        with open(path, 'r') as f:
+            lines = f.readlines()
         try:
-            os.rename("tmp.json", "file.json")
-        except IOError:
+            os.remove(path)
+        except:
             pass
-
-        FileStorage._FileStorage__objects = {}
-
-    def test_all_method(self):
-        """Tests all() method of the FileStorage class"""
-        self.assertTrue(type(models.storage.all()) is dict)
-
-        # What if arg is passed? Ohh! TypeError, do your job!
-        with self.assertRaises(TypeError):
-            models.storage.all(None)
-
-    def test_new_method(self):
-        """Tests the new() method of the FileStorage class"""
-        dummy_bm = BaseModel()
-        dummy_user = User()
-        dummy_state = State()
-        dummy_city = City()
-        dummy_place = Place()
-        dummy_review = Review()
-        dummy_amenity = Amenity()
-
-        # Checks that the objects created above are stored already
-        self.assertIn("BaseModel." + dummy_bm.id,
-                      models.storage.all().keys())
-        self.assertIn(dummy_bm, models.storage.all().values())
-        self.assertIn("User." + dummy_user.id, models.storage.all().keys())
-        self.assertIn(dummy_user, models.storage.all().values())
-        self.assertIn("State." + dummy_state.id, models.storage.all().keys())
-        self.assertIn(dummy_state, models.storage.all().values())
-        self.assertIn("Place." + dummy_place.id, models.storage.all().keys())
-        self.assertIn(dummy_place, models.storage.all().values())
-        self.assertIn("City." + dummy_city.id, models.storage.all().keys())
-        self.assertIn(dummy_city, models.storage.all().values())
-        self.assertIn("Amenity." + dummy_amenity.id,
-                      models.storage.all().keys())
-        self.assertIn(dummy_amenity, models.storage.all().values())
-        self.assertIn("Review." + dummy_review.id,
-                      models.storage.all().keys())
-        self.assertIn(dummy_review, models.storage.all().values())
-
-        # What if more than one arg were passed to this guy?
-        # TypeError, we need you here!
-        with self.assertRaises(TypeError):
-            models.storage.new(BaseModel(), 1)
-
-        # What if None was passed? That guy needs learn a lesson...
-        # AttributeError, will you join us?
-        with self.assertRaises(AttributeError):
-            models.storage.new(None)
-
-    def test_save_method(self):
-        """Time to deal with reload() method in FileStorage class"""
-        dummy_bm = BaseModel()
-        dummy_user = User()
-        dummy_state = State()
-        dummy_city = City()
-        dummy_place = Place()
-        dummy_review = Review()
-        dummy_amenity = Amenity()
-
-        models.storage.save()
-
-        with open("file.json", "r") as f:
-            save_text = f.read()
-            self.assertIn("BaseModel." + dummy_bm.id, save_text)
-            self.assertIn("User." + dummy_user.id, save_text)
-            self.assertIn("State." + dummy_state.id, save_text)
-            self.assertIn("Place." + dummy_place.id, save_text)
-            self.assertIn("City." + dummy_city.id, save_text)
-            self.assertIn("Amenity." + dummy_amenity.id, save_text)
-            self.assertIn("Review." + dummy_review.id, save_text)
-
-        # What happens when an arg is passed? TypeError has been my agent!
-        with self.assertRaises(TypeError):
-            models.storage.save(None)
-
-    def test_reload_method(self):
-        """Tests the reload method... Quite tricky!"""
-        dummy_bm = BaseModel()
-        dummy_user = User()
-        dummy_state = State()
-        dummy_city = City()
-        dummy_place = Place()
-        dummy_review = Review()
-        dummy_amenity = Amenity()
-
-        models.storage.save()
-        models.storage.reload()
-        objects = FileStorage._FileStorage__objects
-
-        self.assertIn("BaseModel." + dummy_bm.id, objects)
-        self.assertIn("User." + dummy_user.id, objects)
-        self.assertIn("State." + dummy_state.id, objects)
-        self.assertIn("Place." + dummy_place.id, objects)
-        self.assertIn("City." + dummy_city.id, objects)
-        self.assertIn("Amenity." + dummy_amenity.id, objects)
-        self.assertIn("Review." + dummy_review.id, objects)
-
-        # What happens when an arg is passed? TypeError is raised
-        with self.assertRaises(TypeError):
-            models.storage.reload(None)
+        self.storage.save()
+        with open(path, 'r') as f:
+            lines2 = f.readlines()
+        self.assertEqual(lines, lines2)
+        try:
+            os.remove(path)
+        except:
+            pass
+        with open(path, "w") as f:
+            f.write("{}")
+        with open(path, "r") as r:
+            for line in r:
+                self.assertEqual(line, "{}")
+        self.assertIs(self.storage.reload(), None)
 
 
 if __name__ == "__main__":
